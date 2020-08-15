@@ -152,7 +152,7 @@ LZ4_decompress_generic(const char *const src, char *const dst, int srcSize,
 		    && likely((endOnInput ? ip < shortiend : 1) &
 			      (op <= shortoend))) {
 			/* Copy the literals */
-			memcpy(op, ip, endOnInput ? 16 : 8);
+			LZ4_memcpy(op, ip, endOnInput ? 16 : 8);
 			op += length;
 			ip += length;
 
@@ -171,9 +171,9 @@ LZ4_decompress_generic(const char *const src, char *const dst, int srcSize,
 			if ((length != ML_MASK) && (offset >= 8) &&
 			    (dict == withPrefix64k || match >= lowPrefix)) {
 				/* Copy the match. */
-				memcpy(op + 0, match + 0, 8);
-				memcpy(op + 8, match + 8, 8);
-				memcpy(op + 16, match + 16, 2);
+				LZ4_memcpy(op + 0, match + 0, 8);
+				LZ4_memcpy(op + 8, match + 8, 8);
+				LZ4_memcpy(op + 16, match + 16, 2);
 				op += length + MINMATCH;
 				/* Both stages worked, load the next token. */
 				continue;
@@ -257,11 +257,7 @@ LZ4_decompress_generic(const char *const src, char *const dst, int srcSize,
 				}
 			}
 
-			/*
-			 * supports overlapping memory regions; only matters
-			 * for in-place decompression scenarios
-			 */
-			LZ4_memmove(op, ip, length);
+			LZ4_memcpy(op, ip, length);
 			ip += length;
 			op += length;
 
@@ -384,7 +380,7 @@ LZ4_decompress_generic(const char *const src, char *const dst, int srcSize,
 				while (op < copyEnd)
 					*op++ = *match++;
 			} else {
-				memcpy(op, match, mlen);
+				LZ4_memcpy(op, match, mlen);
 			}
 			op = copyEnd;
 			if (op == oend)
