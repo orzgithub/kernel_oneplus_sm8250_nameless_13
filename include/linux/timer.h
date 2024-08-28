@@ -14,13 +14,13 @@ struct timer_list {
 	 * All fields that change during normal runtime grouped to the
 	 * same cacheline
 	 */
-	struct hlist_node	entry;
-	unsigned long		expires;
-	void			(*function)(struct timer_list *);
-	u32			flags;
+	struct hlist_node entry;
+	unsigned long expires;
+	void (*function)(struct timer_list *);
+	u32 flags;
 
 #ifdef CONFIG_LOCKDEP
-	struct lockdep_map	lockdep_map;
+	struct lockdep_map lockdep_map;
 #endif
 
 	ANDROID_KABI_RESERVE(1);
@@ -34,7 +34,7 @@ struct timer_list {
  * the copy of the lockdep_map later! We use the pointer to and the string
  * "<file>:<line>" as the key resp. the name of the lockdep_map.
  */
-#define __TIMER_LOCKDEP_MAP_INITIALIZER(_kn)				\
+#define __TIMER_LOCKDEP_MAP_INITIALIZER(_kn)                                   \
 	.lockdep_map = STATIC_LOCKDEP_MAP_INIT(_kn, &_kn),
 #else
 #define __TIMER_LOCKDEP_MAP_INITIALIZER(_kn)
@@ -54,35 +54,34 @@ struct timer_list {
  * workqueue locking issues. It's not meant for executing random crap
  * with interrupts disabled. Abuse is monitored!
  */
-#define TIMER_CPUMASK		0x0003FFFF
-#define TIMER_MIGRATING		0x00040000
-#define TIMER_BASEMASK		(TIMER_CPUMASK | TIMER_MIGRATING)
-#define TIMER_DEFERRABLE	0x00080000
-#define TIMER_PINNED		0x00100000
-#define TIMER_IRQSAFE		0x00200000
-#define TIMER_ARRAYSHIFT	22
-#define TIMER_ARRAYMASK		0xFFC00000
+#define TIMER_CPUMASK 0x0003FFFF
+#define TIMER_MIGRATING 0x00040000
+#define TIMER_BASEMASK (TIMER_CPUMASK | TIMER_MIGRATING)
+#define TIMER_DEFERRABLE 0x00080000
+#define TIMER_PINNED 0x00100000
+#define TIMER_IRQSAFE 0x00200000
+#define TIMER_ARRAYSHIFT 22
+#define TIMER_ARRAYMASK 0xFFC00000
 
-#define TIMER_TRACE_FLAGMASK	(TIMER_MIGRATING | TIMER_DEFERRABLE | TIMER_PINNED | TIMER_IRQSAFE)
+#define TIMER_TRACE_FLAGMASK                                                   \
+	(TIMER_MIGRATING | TIMER_DEFERRABLE | TIMER_PINNED | TIMER_IRQSAFE)
 
-#define __TIMER_INITIALIZER(_function, _flags) {		\
-		.entry = { .next = TIMER_ENTRY_STATIC },	\
-		.function = (_function),			\
-		.flags = (_flags),				\
-		__TIMER_LOCKDEP_MAP_INITIALIZER(		\
-			__FILE__ ":" __stringify(__LINE__))	\
-	}
+#define __TIMER_INITIALIZER(_function, _flags)                                 \
+	{ .entry = { .next = TIMER_ENTRY_STATIC },                             \
+	  .function = (_function),                                             \
+	  .flags = (_flags),                                                   \
+	  __TIMER_LOCKDEP_MAP_INITIALIZER(__FILE__                             \
+					  ":" __stringify(__LINE__)) }
 
-#define DEFINE_TIMER(_name, _function)				\
-	struct timer_list _name =				\
-		__TIMER_INITIALIZER(_function, 0)
+#define DEFINE_TIMER(_name, _function)                                         \
+	struct timer_list _name = __TIMER_INITIALIZER(_function, 0)
 
 /*
  * LOCKDEP and DEBUG timer interfaces.
  */
-void init_timer_key(struct timer_list *timer,
-		    void (*func)(struct timer_list *), unsigned int flags,
-		    const char *name, struct lock_class_key *key);
+void init_timer_key(struct timer_list *timer, void (*func)(struct timer_list *),
+		    unsigned int flags, const char *name,
+		    struct lock_class_key *key);
 
 #ifdef CONFIG_DEBUG_OBJECTS_TIMERS
 extern void init_timer_on_stack_key(struct timer_list *timer,
@@ -92,8 +91,7 @@ extern void init_timer_on_stack_key(struct timer_list *timer,
 #else
 static inline void init_timer_on_stack_key(struct timer_list *timer,
 					   void (*func)(struct timer_list *),
-					   unsigned int flags,
-					   const char *name,
+					   unsigned int flags, const char *name,
 					   struct lock_class_key *key)
 {
 	init_timer_key(timer, func, flags, name, key);
@@ -101,22 +99,22 @@ static inline void init_timer_on_stack_key(struct timer_list *timer,
 #endif
 
 #ifdef CONFIG_LOCKDEP
-#define __init_timer(_timer, _fn, _flags)				\
-	do {								\
-		static struct lock_class_key __key;			\
-		init_timer_key((_timer), (_fn), (_flags), #_timer, &__key);\
+#define __init_timer(_timer, _fn, _flags)                                      \
+	do {                                                                   \
+		static struct lock_class_key __key;                            \
+		init_timer_key((_timer), (_fn), (_flags), #_timer, &__key);    \
 	} while (0)
 
-#define __init_timer_on_stack(_timer, _fn, _flags)			\
-	do {								\
-		static struct lock_class_key __key;			\
-		init_timer_on_stack_key((_timer), (_fn), (_flags),	\
-					#_timer, &__key);		 \
+#define __init_timer_on_stack(_timer, _fn, _flags)                             \
+	do {                                                                   \
+		static struct lock_class_key __key;                            \
+		init_timer_on_stack_key((_timer), (_fn), (_flags), #_timer,    \
+					&__key);                               \
 	} while (0)
 #else
-#define __init_timer(_timer, _fn, _flags)				\
+#define __init_timer(_timer, _fn, _flags)                                      \
 	init_timer_key((_timer), (_fn), (_flags), NULL, NULL)
-#define __init_timer_on_stack(_timer, _fn, _flags)			\
+#define __init_timer_on_stack(_timer, _fn, _flags)                             \
 	init_timer_on_stack_key((_timer), (_fn), (_flags), NULL, NULL)
 #endif
 
@@ -130,19 +128,21 @@ static inline void init_timer_on_stack_key(struct timer_list *timer,
  * or timer_setup(). For timers on the stack, timer_setup_on_stack() must
  * be used and must be balanced with a call to destroy_timer_on_stack().
  */
-#define timer_setup(timer, callback, flags)			\
+#define timer_setup(timer, callback, flags)                                    \
 	__init_timer((timer), (callback), (flags))
 
-#define timer_setup_on_stack(timer, callback, flags)		\
+#define timer_setup_on_stack(timer, callback, flags)                           \
 	__init_timer_on_stack((timer), (callback), (flags))
 
 #ifdef CONFIG_DEBUG_OBJECTS_TIMERS
 extern void destroy_timer_on_stack(struct timer_list *timer);
 #else
-static inline void destroy_timer_on_stack(struct timer_list *timer) { }
+static inline void destroy_timer_on_stack(struct timer_list *timer)
+{
+}
 #endif
 
-#define from_timer(var, callback_timer, timer_fieldname) \
+#define from_timer(var, callback_timer, timer_fieldname)                       \
 	container_of(callback_timer, typeof(*var), timer_fieldname)
 
 /**
@@ -155,13 +155,13 @@ static inline void destroy_timer_on_stack(struct timer_list *timer) { }
  *
  * return value: 1 if the timer is pending, 0 if not.
  */
-static inline int timer_pending(const struct timer_list * timer)
+static inline int timer_pending(const struct timer_list *timer)
 {
 	return timer->entry.pprev != NULL;
 }
 
 extern void add_timer_on(struct timer_list *timer, int cpu);
-extern int del_timer(struct timer_list * timer);
+extern int del_timer(struct timer_list *timer);
 extern int mod_timer(struct timer_list *timer, unsigned long expires);
 extern int mod_timer_pending(struct timer_list *timer, unsigned long expires);
 extern int timer_reduce(struct timer_list *timer, unsigned long expires);
@@ -173,7 +173,7 @@ extern bool check_pending_deferrable_timers(int cpu);
  * The jiffies value which is added to now, when there is no timer
  * in the timer wheel:
  */
-#define NEXT_TIMER_MAX_DELTA	((1UL << 30) - 1)
+#define NEXT_TIMER_MAX_DELTA ((1UL << 30) - 1)
 
 /* To be used from cpusets, only */
 extern void timer_quiesce_cpu(void *cpup);
@@ -183,12 +183,7 @@ extern void add_timer(struct timer_list *timer);
 extern int try_to_del_timer_sync(struct timer_list *timer);
 
 extern struct timer_base timer_base_deferrable;
-
-#ifdef CONFIG_SMP
-  extern int del_timer_sync(struct timer_list *timer);
-#else
-# define del_timer_sync(t)		del_timer(t)
-#endif
+extern int del_timer_sync(struct timer_list *timer);
 
 #define del_singleshot_timer_sync(t) del_timer_sync(t)
 
@@ -202,8 +197,7 @@ struct ctl_table;
 
 extern unsigned int sysctl_timer_migration;
 int timer_migration_handler(struct ctl_table *table, int write,
-			    void __user *buffer, size_t *lenp,
-			    loff_t *ppos);
+			    void __user *buffer, size_t *lenp, loff_t *ppos);
 #endif
 
 unsigned long __round_jiffies(unsigned long j, int cpu);
@@ -220,8 +214,8 @@ unsigned long round_jiffies_up_relative(unsigned long j);
 int timers_prepare_cpu(unsigned int cpu);
 int timers_dead_cpu(unsigned int cpu);
 #else
-#define timers_prepare_cpu	NULL
-#define timers_dead_cpu		NULL
+#define timers_prepare_cpu NULL
+#define timers_dead_cpu NULL
 #endif
 
 #endif
