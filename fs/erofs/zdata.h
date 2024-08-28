@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (C) 2018 HUAWEI, Inc.
- *             http://www.huawei.com/
- * Created by Gao Xiang <gaoxiang25@huawei.com>
+ *             https://www.huawei.com/
  */
 #ifndef __EROFS_FS_ZDATA_H
 #define __EROFS_FS_ZDATA_H
@@ -10,12 +9,8 @@
 #include "internal.h"
 #include "zpvec.h"
 
-/*
- *  - 0x6A110C8D ('pallocated', Z_EROFS_MAPPING_PREALLOCATED) -
- * preallocated cached pages, and will be added into managed cache space
- */
-#define Z_EROFS_MAPPING_PREALLOCATED	((void *)0x6A110C8D)
-#define Z_EROFS_NR_INLINE_PAGEVECS      3
+#define Z_EROFS_PCLUSTER_MAX_PAGES (Z_EROFS_PCLUSTER_MAX_SIZE / PAGE_SIZE)
+#define Z_EROFS_NR_INLINE_PAGEVECS 3
 
 /*
  * Structure fields follow one of the following exclusion rules.
@@ -48,8 +43,8 @@ struct z_erofs_collection {
 	};
 };
 
-#define Z_EROFS_PCLUSTER_FULL_LENGTH    0x00000001
-#define Z_EROFS_PCLUSTER_LENGTH_BIT     1
+#define Z_EROFS_PCLUSTER_FULL_LENGTH 0x00000001
+#define Z_EROFS_PCLUSTER_LENGTH_BIT 1
 
 /*
  * let's leave a type here in case of introducing
@@ -64,16 +59,17 @@ struct z_erofs_pcluster {
 	/* A: point to next chained pcluster or TAILs */
 	z_erofs_next_pcluster_t next;
 
-	/* A: compressed pages (including multi-usage pages) */
-	struct page *compressed_pages[Z_EROFS_CLUSTER_MAX_PAGES];
-
 	/* A: lower limit of decompressed length and if full length or not */
 	unsigned int length;
 
+	/* I: physical cluster size in pages */
+	unsigned short pclusterpages;
+
 	/* I: compression algorithm format */
 	unsigned char algorithmformat;
-	/* I: bit shift of physical cluster size */
-	unsigned char clusterbits;
+
+	/* A: compressed pages (can be cached or inplaced pages) */
+	struct page *compressed_pages[];
 };
 
 #define z_erofs_primarycollection(pcluster) (&(pcluster)->primary_collection)
@@ -81,15 +77,14 @@ struct z_erofs_pcluster {
 /* let's avoid the valid 32-bit kernel addresses */
 
 /* the chained workgroup has't submitted io (still open) */
-#define Z_EROFS_PCLUSTER_TAIL           ((void *)0x5F0ECAFE)
+#define Z_EROFS_PCLUSTER_TAIL ((void *)0x5F0ECAFE)
 /* the chained workgroup has already submitted io */
-#define Z_EROFS_PCLUSTER_TAIL_CLOSED    ((void *)0x5F0EDEAD)
+#define Z_EROFS_PCLUSTER_TAIL_CLOSED ((void *)0x5F0EDEAD)
 
-#define Z_EROFS_PCLUSTER_NIL            (NULL)
+#define Z_EROFS_PCLUSTER_NIL (NULL)
 
-#define Z_EROFS_WORKGROUP_SIZE  sizeof(struct z_erofs_pcluster)
-
-struct z_erofs_unzip_io {
+struct z_erofs_decompressqueue {
+	struct super_block *sb;
 	atomic_t pending_bios;
 	z_erofs_next_pcluster_t head;
 
@@ -99,21 +94,16 @@ struct z_erofs_unzip_io {
 	} u;
 };
 
-struct z_erofs_unzip_io_sb {
-	struct z_erofs_unzip_io io;
-	struct super_block *sb;
-};
-
-#define MNGD_MAPPING(sbi)	((sbi)->managed_cache->i_mapping)
+#define MNGD_MAPPING(sbi) ((sbi)->managed_cache->i_mapping)
 static inline bool erofs_page_is_managed(const struct erofs_sb_info *sbi,
 					 struct page *page)
 {
 	return page->mapping == MNGD_MAPPING(sbi);
 }
 
-#define Z_EROFS_ONLINEPAGE_COUNT_BITS   2
-#define Z_EROFS_ONLINEPAGE_COUNT_MASK   ((1 << Z_EROFS_ONLINEPAGE_COUNT_BITS) - 1)
-#define Z_EROFS_ONLINEPAGE_INDEX_SHIFT  (Z_EROFS_ONLINEPAGE_COUNT_BITS)
+#define Z_EROFS_ONLINEPAGE_COUNT_BITS 2
+#define Z_EROFS_ONLINEPAGE_COUNT_MASK ((1 << Z_EROFS_ONLINEPAGE_COUNT_BITS) - 1)
+#define Z_EROFS_ONLINEPAGE_INDEX_SHIFT (Z_EROFS_ONLINEPAGE_COUNT_BITS)
 
 /*
  * waiters (aka. ongoing_packs): # to unlock the page
@@ -142,7 +132,7 @@ static inline void z_erofs_onlinepage_init(struct page *page)
 	union {
 		z_erofs_onlinepage_t o;
 		unsigned long v;
-	/* keep from being unlocked in advance */
+		/* keep from being unlocked in advance */
 	} u = { .o = ATOMIC_INIT(1) };
 
 	set_page_private(page, u.v);
@@ -150,8 +140,8 @@ static inline void z_erofs_onlinepage_init(struct page *page)
 	SetPagePrivate(page);
 }
 
-static inline void z_erofs_onlinepage_fixup(struct page *page,
-	uintptr_t index, bool down)
+static inline void z_erofs_onlinepage_fixup(struct page *page, uintptr_t index,
+					    bool down)
 {
 	union z_erofs_onlinepage_converter u = { .v = &page_private(page) };
 	int orig, orig_index, val;
@@ -167,7 +157,7 @@ repeat:
 	}
 
 	val = (index << Z_EROFS_ONLINEPAGE_INDEX_SHIFT) |
-		((orig & Z_EROFS_ONLINEPAGE_COUNT_MASK) + (unsigned int)down);
+	      ((orig & Z_EROFS_ONLINEPAGE_COUNT_MASK) + (unsigned int)down);
 	if (atomic_cmpxchg(u.o, orig, val) != orig)
 		goto repeat;
 }
@@ -182,6 +172,7 @@ static inline void z_erofs_onlinepage_endio(struct page *page)
 
 	v = atomic_dec_return(u.o);
 	if (!(v & Z_EROFS_ONLINEPAGE_COUNT_MASK)) {
+		set_page_private(page, 0);
 		ClearPagePrivate(page);
 		if (!PageError(page))
 			SetPageUptodate(page);
@@ -190,9 +181,8 @@ static inline void z_erofs_onlinepage_endio(struct page *page)
 	erofs_dbg("%s, page %p value %x", __func__, page, atomic_read(u.o));
 }
 
-#define Z_EROFS_VMAP_ONSTACK_PAGES	\
+#define Z_EROFS_VMAP_ONSTACK_PAGES                                             \
 	min_t(unsigned int, THREAD_SIZE / 8 / sizeof(struct page *), 96U)
-#define Z_EROFS_VMAP_GLOBAL_PAGES	2048
+#define Z_EROFS_VMAP_GLOBAL_PAGES 2048
 
 #endif
-

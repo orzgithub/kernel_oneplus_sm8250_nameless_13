@@ -1,20 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (C) 2017-2018 HUAWEI, Inc.
- *             http://www.huawei.com/
- * Created by Gao Xiang <gaoxiang25@huawei.com>
+ *             https://www.huawei.com/
  */
 #include "internal.h"
 
 static const unsigned char erofs_filetype_table[EROFS_FT_MAX] = {
-	[EROFS_FT_UNKNOWN]	= DT_UNKNOWN,
-	[EROFS_FT_REG_FILE]	= DT_REG,
-	[EROFS_FT_DIR]		= DT_DIR,
-	[EROFS_FT_CHRDEV]	= DT_CHR,
-	[EROFS_FT_BLKDEV]	= DT_BLK,
-	[EROFS_FT_FIFO]		= DT_FIFO,
-	[EROFS_FT_SOCK]		= DT_SOCK,
-	[EROFS_FT_SYMLINK]	= DT_LNK,
+	[EROFS_FT_UNKNOWN] = DT_UNKNOWN, [EROFS_FT_REG_FILE] = DT_REG,
+	[EROFS_FT_DIR] = DT_DIR,	 [EROFS_FT_CHRDEV] = DT_CHR,
+	[EROFS_FT_BLKDEV] = DT_BLK,	 [EROFS_FT_FIFO] = DT_FIFO,
+	[EROFS_FT_SOCK] = DT_SOCK,	 [EROFS_FT_SYMLINK] = DT_LNK,
 };
 
 static void debug_one_dentry(unsigned char d_type, const char *de_name,
@@ -68,8 +63,8 @@ static int erofs_fill_dentries(struct inode *dir, struct dir_context *ctx,
 		}
 
 		debug_one_dentry(d_type, de_name, de_namelen);
-		if (!dir_emit(ctx, de_name, de_namelen,
-			      le64_to_cpu(de->nid), d_type))
+		if (!dir_emit(ctx, de_name, de_namelen, le64_to_cpu(de->nid),
+			      d_type))
 			/* stopped by some reason */
 			return 1;
 		++de;
@@ -99,9 +94,10 @@ static int erofs_readdir(struct file *f, struct dir_context *ctx)
 			err = -ENOMEM;
 			break;
 		} else if (IS_ERR(dentry_page)) {
-			erofs_err(dir->i_sb,
-				  "fail to readdir of logical block %u of nid %llu",
-				  i, EROFS_I(dir)->nid);
+			erofs_err(
+				dir->i_sb,
+				"fail to readdir of logical block %u of nid %llu",
+				i, EROFS_I(dir)->nid);
 			err = -EFSCORRUPTED;
 			break;
 		}
@@ -119,8 +115,8 @@ static int erofs_readdir(struct file *f, struct dir_context *ctx)
 			goto skip_this;
 		}
 
-		maxsize = min_t(unsigned int,
-				dirsize - ctx->pos + ofs, PAGE_SIZE);
+		maxsize = min_t(unsigned int, dirsize - ctx->pos + ofs,
+				PAGE_SIZE);
 
 		/* search dirents at the arbitrary position */
 		if (initial) {
@@ -131,9 +127,8 @@ static int erofs_readdir(struct file *f, struct dir_context *ctx)
 				goto skip_this;
 		}
 
-		err = erofs_fill_dentries(dir, ctx, de, &ofs,
-					  nameoff, maxsize);
-skip_this:
+		err = erofs_fill_dentries(dir, ctx, de, &ofs, nameoff, maxsize);
+	skip_this:
 		kunmap(dentry_page);
 
 		put_page(dentry_page);
@@ -149,8 +144,7 @@ skip_this:
 }
 
 const struct file_operations erofs_dir_fops = {
-	.llseek		= generic_file_llseek,
-	.read		= generic_read_dir,
-	.iterate_shared	= erofs_readdir,
+	.llseek = generic_file_llseek,
+	.read = generic_read_dir,
+	.iterate_shared = erofs_readdir,
 };
-

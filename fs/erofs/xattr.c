@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (C) 2017-2018 HUAWEI, Inc.
- *             http://www.huawei.com/
- * Created by Gao Xiang <gaoxiang25@huawei.com>
+ *             https://www.huawei.com/
  */
 #include <linux/security.h>
 #include "xattr.h"
@@ -80,11 +79,11 @@ static int init_inode_xattrs(struct inode *inode)
 		goto out_unlock;
 	} else if (vi->xattr_isize < sizeof(struct erofs_xattr_ibody_header)) {
 		if (vi->xattr_isize) {
-			erofs_err(inode->i_sb,
-				  "bogus xattr ibody @ nid %llu", vi->nid);
+			erofs_err(inode->i_sb, "bogus xattr ibody @ nid %llu",
+				  vi->nid);
 			DBG_BUGON(1);
 			ret = -EFSCORRUPTED;
-			goto out_unlock;	/* xattr ondisk layout error */
+			goto out_unlock; /* xattr ondisk layout error */
 		}
 		ret = -ENOATTR;
 		goto out_unlock;
@@ -108,8 +107,8 @@ static int init_inode_xattrs(struct inode *inode)
 	ih = (struct erofs_xattr_ibody_header *)(it.kaddr + it.ofs);
 
 	vi->xattr_shared_count = ih->h_shared_count;
-	vi->xattr_shared_xattrs = kmalloc_array(vi->xattr_shared_count,
-						sizeof(uint), GFP_KERNEL);
+	vi->xattr_shared_xattrs =
+		kmalloc_array(vi->xattr_shared_count, sizeof(uint), GFP_KERNEL);
 	if (!vi->xattr_shared_xattrs) {
 		xattr_iter_end(&it, atomic_map);
 		ret = -ENOMEM;
@@ -190,8 +189,7 @@ static inline int xattr_iter_fixup(struct xattr_iter *it)
 	return 0;
 }
 
-static int inline_xattr_iter_begin(struct xattr_iter *it,
-				   struct inode *inode)
+static int inline_xattr_iter_begin(struct xattr_iter *it, struct inode *inode)
 {
 	struct erofs_inode *const vi = EROFS_I(inode);
 	struct erofs_sb_info *const sbi = EROFS_SB(inode->i_sb);
@@ -335,19 +333,20 @@ static int xattr_entrymatch(struct xattr_iter *_it,
 	struct getxattr_iter *it = container_of(_it, struct getxattr_iter, it);
 
 	return (it->index != entry->e_name_index ||
-		it->name.len != entry->e_name_len) ? -ENOATTR : 0;
+		it->name.len != entry->e_name_len) ?
+		       -ENOATTR :
+		       0;
 }
 
-static int xattr_namematch(struct xattr_iter *_it,
-			   unsigned int processed, char *buf, unsigned int len)
+static int xattr_namematch(struct xattr_iter *_it, unsigned int processed,
+			   char *buf, unsigned int len)
 {
 	struct getxattr_iter *it = container_of(_it, struct getxattr_iter, it);
 
 	return memcmp(buf, it->name.name + processed, len) ? -ENOATTR : 0;
 }
 
-static int xattr_checkbuffer(struct xattr_iter *_it,
-			     unsigned int value_sz)
+static int xattr_checkbuffer(struct xattr_iter *_it, unsigned int value_sz)
 {
 	struct getxattr_iter *it = container_of(_it, struct getxattr_iter, it);
 	int err = it->buffer_size < value_sz ? -ERANGE : 0;
@@ -356,8 +355,7 @@ static int xattr_checkbuffer(struct xattr_iter *_it,
 	return !it->buffer ? 1 : err;
 }
 
-static void xattr_copyvalue(struct xattr_iter *_it,
-			    unsigned int processed,
+static void xattr_copyvalue(struct xattr_iter *_it, unsigned int processed,
 			    char *buf, unsigned int len)
 {
 	struct getxattr_iter *it = container_of(_it, struct getxattr_iter, it);
@@ -438,8 +436,7 @@ static bool erofs_xattr_trusted_list(struct dentry *dentry)
 	return capable(CAP_SYS_ADMIN);
 }
 
-int erofs_getxattr(struct inode *inode, int index,
-		   const char *name,
+int erofs_getxattr(struct inode *inode, int index, const char *name,
 		   void *buffer, size_t buffer_size)
 {
 	int ret;
@@ -492,24 +489,24 @@ static int erofs_xattr_generic_get(const struct xattr_handler *handler,
 }
 
 const struct xattr_handler erofs_xattr_user_handler = {
-	.prefix	= XATTR_USER_PREFIX,
-	.flags	= EROFS_XATTR_INDEX_USER,
-	.list	= erofs_xattr_user_list,
-	.get	= erofs_xattr_generic_get,
+	.prefix = XATTR_USER_PREFIX,
+	.flags = EROFS_XATTR_INDEX_USER,
+	.list = erofs_xattr_user_list,
+	.get = erofs_xattr_generic_get,
 };
 
 const struct xattr_handler erofs_xattr_trusted_handler = {
-	.prefix	= XATTR_TRUSTED_PREFIX,
-	.flags	= EROFS_XATTR_INDEX_TRUSTED,
-	.list	= erofs_xattr_trusted_list,
-	.get	= erofs_xattr_generic_get,
+	.prefix = XATTR_TRUSTED_PREFIX,
+	.flags = EROFS_XATTR_INDEX_TRUSTED,
+	.list = erofs_xattr_trusted_list,
+	.get = erofs_xattr_generic_get,
 };
 
 #ifdef CONFIG_EROFS_FS_SECURITY
 const struct xattr_handler __maybe_unused erofs_xattr_security_handler = {
-	.prefix	= XATTR_SECURITY_PREFIX,
-	.flags	= EROFS_XATTR_INDEX_SECURITY,
-	.get	= erofs_xattr_generic_get,
+	.prefix = XATTR_SECURITY_PREFIX,
+	.flags = EROFS_XATTR_INDEX_SECURITY,
+	.get = erofs_xattr_generic_get,
 };
 #endif
 
@@ -556,8 +553,8 @@ static int xattr_entrylist(struct xattr_iter *_it,
 		return 1;
 	}
 
-	if (it->buffer_ofs + prefix_len
-		+ entry->e_name_len + 1 > it->buffer_size)
+	if (it->buffer_ofs + prefix_len + entry->e_name_len + 1 >
+	    it->buffer_size)
 		return -ERANGE;
 
 	memcpy(it->buffer + it->buffer_ofs, prefix, prefix_len);
@@ -565,8 +562,8 @@ static int xattr_entrylist(struct xattr_iter *_it,
 	return 0;
 }
 
-static int xattr_namelist(struct xattr_iter *_it,
-			  unsigned int processed, char *buf, unsigned int len)
+static int xattr_namelist(struct xattr_iter *_it, unsigned int processed,
+			  char *buf, unsigned int len)
 {
 	struct listxattr_iter *it =
 		container_of(_it, struct listxattr_iter, it);
@@ -576,8 +573,7 @@ static int xattr_namelist(struct xattr_iter *_it,
 	return 0;
 }
 
-static int xattr_skipvalue(struct xattr_iter *_it,
-			   unsigned int value_sz)
+static int xattr_skipvalue(struct xattr_iter *_it, unsigned int value_sz)
 {
 	struct listxattr_iter *it =
 		container_of(_it, struct listxattr_iter, it);
@@ -648,8 +644,7 @@ static int shared_listxattr(struct listxattr_iter *it)
 	return ret ? ret : it->buffer_ofs;
 }
 
-ssize_t erofs_listxattr(struct dentry *dentry,
-			char *buffer, size_t buffer_size)
+ssize_t erofs_listxattr(struct dentry *dentry, char *buffer, size_t buffer_size)
 {
 	int ret;
 	struct listxattr_iter it;
@@ -709,4 +704,3 @@ struct posix_acl *erofs_get_acl(struct inode *inode, int type)
 	return acl;
 }
 #endif
-

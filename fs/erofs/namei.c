@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (C) 2017-2018 HUAWEI, Inc.
- *             http://www.huawei.com/
- * Created by Gao Xiang <gaoxiang25@huawei.com>
+ *             https://www.huawei.com/
  */
 #include "xattr.h"
 
@@ -41,7 +40,7 @@ static inline int erofs_dirnamecmp(const struct erofs_qstr *qn,
 	return qn->name[i] == '\0' ? 0 : 1;
 }
 
-#define nameoff_from_disk(off, sz)	(le16_to_cpu(off) & ((sz) - 1))
+#define nameoff_from_disk(off, sz) (le16_to_cpu(off) & ((sz) - 1))
 
 static struct erofs_dirent *find_target_dirent(struct erofs_qstr *name,
 					       u8 *data,
@@ -59,15 +58,16 @@ static struct erofs_dirent *find_target_dirent(struct erofs_qstr *name,
 
 	while (head <= back) {
 		const int mid = head + (back - head) / 2;
-		const int nameoff = nameoff_from_disk(de[mid].nameoff,
-						      dirblksize);
+		const int nameoff =
+			nameoff_from_disk(de[mid].nameoff, dirblksize);
 		unsigned int matched = min(startprfx, endprfx);
 		struct erofs_qstr dname = {
 			.name = data + nameoff,
 			.end = mid >= ndirents - 1 ?
-				data + dirblksize :
-				data + nameoff_from_disk(de[mid + 1].nameoff,
-							 dirblksize)
+				       data + dirblksize :
+				       data + nameoff_from_disk(
+						      de[mid + 1].nameoff,
+						      dirblksize)
 		};
 
 		/* string comparison without already matched prefix */
@@ -106,8 +106,8 @@ static struct page *find_target_block_classic(struct inode *dir,
 
 		if (!IS_ERR(page)) {
 			struct erofs_dirent *de = kmap_atomic(page);
-			const int nameoff = nameoff_from_disk(de->nameoff,
-							      EROFS_BLKSIZ);
+			const int nameoff =
+				nameoff_from_disk(de->nameoff, EROFS_BLKSIZ);
 			const int ndirents = nameoff / sizeof(*de);
 			int diff;
 			unsigned int matched;
@@ -131,8 +131,8 @@ static struct page *find_target_block_classic(struct inode *dir,
 				dname.end = (u8 *)de + EROFS_BLKSIZ;
 			else
 				dname.end = (u8 *)de +
-					nameoff_from_disk(de[1].nameoff,
-							  EROFS_BLKSIZ);
+					    nameoff_from_disk(de[1].nameoff,
+							      EROFS_BLKSIZ);
 
 			/* string comparison without already matched prefix */
 			diff = erofs_dirnamecmp(name, &dname, &matched);
@@ -157,7 +157,7 @@ static struct page *find_target_block_classic(struct inode *dir,
 			}
 			continue;
 		}
-out:		/* free if the candidate is valid */
+	out: /* free if the candidate is valid */
 		if (!IS_ERR(candidate))
 			put_page(candidate);
 		return page;
@@ -165,9 +165,8 @@ out:		/* free if the candidate is valid */
 	return candidate;
 }
 
-int erofs_namei(struct inode *dir,
-		struct qstr *name,
-		erofs_nid_t *nid, unsigned int *d_type)
+int erofs_namei(struct inode *dir, struct qstr *name, erofs_nid_t *nid,
+		unsigned int *d_type)
 {
 	int ndirents;
 	struct page *page;
@@ -206,8 +205,7 @@ int erofs_namei(struct inode *dir,
 }
 
 /* NOTE: i_mutex is already held by vfs */
-static struct dentry *erofs_lookup(struct inode *dir,
-				   struct dentry *dentry,
+static struct dentry *erofs_lookup(struct inode *dir, struct dentry *dentry,
 				   unsigned int flags)
 {
 	int err;
@@ -244,9 +242,6 @@ static struct dentry *erofs_lookup(struct inode *dir,
 const struct inode_operations erofs_dir_iops = {
 	.lookup = erofs_lookup,
 	.getattr = erofs_getattr,
-#ifdef CONFIG_EROFS_FS_XATTR
 	.listxattr = erofs_listxattr,
-#endif
 	.get_acl = erofs_get_acl,
 };
-
